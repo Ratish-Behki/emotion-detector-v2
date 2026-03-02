@@ -2,16 +2,26 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 import cv2
+import os
 from tensorflow.keras.models import load_model
 
 st.set_page_config(page_title="Emotion Classifier", page_icon="😊")
 
+# ------------------ Load Model Safely ------------------ #
 @st.cache_resource
 def load_my_model():
-    return load_model("emotion_model.keras")
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(BASE_DIR, "emotion_model.keras")
+
+    if not os.path.exists(model_path):
+        st.error("Model file not found!")
+        st.stop()
+
+    return load_model(model_path)
 
 model = load_my_model()
 
+# ------------------ UI ------------------ #
 st.title("😊 Emotion Detection System")
 st.write("Upload an image and AI will predict Happy or Sad.")
 
@@ -19,13 +29,24 @@ uploaded_file = st.file_uploader("Choose an image", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
     file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-    img = cv2.imdecode(file_bytes, 1)
+    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
-    st.image(img, caption="Uploaded Image", use_column_width=True)
+    if img is None:
+        st.error("Could not read the image.")
+        st.stop()
 
-    resize = tf.image.resize(img, (256, 256))
-    yhat = model.predict(np.expand_dims(resize/255, 0))[0][0]
+    # Convert BGR to RGB
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+    st.image(img_rgb, caption="Uploaded Image", use_container_width=True)
+
+    # Resize image
+    resized = cv2.resize(img_rgb, (256, 256))
+    resized = resized / 255.0
+    input_img = np.expand_dims(resized, axis=0)
+
+    # Prediction
+    yhat = model.predict(input_img)[0][0]
     confidence = float(yhat)
 
     if confidence > 0.5:
