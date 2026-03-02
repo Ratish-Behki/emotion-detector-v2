@@ -3,7 +3,6 @@ import tensorflow as tf
 import numpy as np
 import cv2
 import os
-from tensorflow.keras.models import load_model
 
 st.set_page_config(page_title="Emotion Classifier", page_icon="😊")
 
@@ -11,13 +10,13 @@ st.set_page_config(page_title="Emotion Classifier", page_icon="😊")
 @st.cache_resource
 def load_my_model():
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(BASE_DIR, "emotion_model.keras")
+    model_path = os.path.join(BASE_DIR, "emotion_model.h5")  # ✅ changed to .h5
 
     if not os.path.exists(model_path):
         st.error("Model file not found!")
         st.stop()
 
-    return load_model(model_path)
+    return tf.keras.models.load_model(model_path, compile=False)
 
 model = load_my_model()
 
@@ -46,7 +45,7 @@ if uploaded_file is not None:
     input_img = np.expand_dims(resized, axis=0)
 
     # Prediction
-    yhat = model.predict(input_img)[0][0]
+    yhat = model.predict(input_img, verbose=0)[0][0]
     confidence = float(yhat)
 
     if confidence > 0.5:
