@@ -1,54 +1,34 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
-from PIL import Image
-import gdown
-import os
+import cv2
+from tensorflow.keras.models import load_model
 
-# ----------------------------
-# Download Model from Drive
-# ----------------------------
-MODEL_PATH = "emotion_model.keras"
-FILE_ID = "1mpzEmGftosz1Bi_OpIP1e8-XhQjiM1hw"
-DOWNLOAD_URL = f"https://drive.google.com/uc?id={FILE_ID}"
+st.set_page_config(page_title="Emotion Classifier", page_icon="😊")
 
-if not os.path.exists(MODEL_PATH):
-    with st.spinner("Downloading model... Please wait."):
-        gdown.download(DOWNLOAD_URL, MODEL_PATH, quiet=False)
-
-# ----------------------------
-# Load Model (cached)
-# ----------------------------
 @st.cache_resource
-def load_model():
-    return tf.keras.models.load_model(MODEL_PATH, compile=False)
+def load_my_model():
+    return load_model("emotion_model.keras")
 
-model = load_model()
+model = load_my_model()
 
-# ----------------------------
-# UI
-# ----------------------------
 st.title("😊 Emotion Detection System")
-st.write("Upload an image and AI will predict emotion.")
+st.write("Upload an image and AI will predict Happy or Sad.")
 
-uploaded_file = st.file_uploader(
-    "Choose an image", 
-    type=["jpg", "png", "jpeg"]
-)
+uploaded_file = st.file_uploader("Choose an image", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
-    image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="Uploaded Image", use_container_width=True)
+    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+    img = cv2.imdecode(file_bytes, 1)
 
-    # Preprocessing
-    img = image.resize((256, 256))
-    img = np.array(img) / 255.0
-    img = np.expand_dims(img, axis=0)
+    st.image(img, caption="Uploaded Image", use_column_width=True)
 
-    # Prediction
-    prediction = model.predict(img)
+    resize = tf.image.resize(img, (256, 256))
+    yhat = model.predict(np.expand_dims(resize/255, 0))[0][0]
 
-    if prediction[0][0] > 0.5:
-        st.success("😊 Happy")
+    confidence = float(yhat)
+
+    if confidence > 0.5:
+        st.error(f"😢 Sad (Confidence: {confidence:.2f})")
     else:
-        st.error("😢 Sad")
+        st.success(f"😊 Happy (Confidence: {1-confidence:.2f})")
