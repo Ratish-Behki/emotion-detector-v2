@@ -1,4 +1,6 @@
 streamlit
-tensorflow==2.20.0
+tensorflow==2.15.0
+numpy==1.26.4
+protobuf==3.20.3
 opencv-python-headless
 pillow
